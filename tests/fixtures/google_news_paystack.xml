@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-written sample in the shape of a Google News RSS search feed. The headlines are made up. -->
+<rss version="2.0">
+  <channel>
+    <title>"Paystack" - Google News</title>
+    <item>
+      <title>Paystack launches faster payouts for small merchants - TechNews NG</title>
+      <link>https://news.google.com/rss/articles/sample-1</link>
+      <pubDate>Sun, 22 Nov 2026 09:30:00 GMT</pubDate>
+      <source url="https://technews.example">TechNews NG</source>
+    </item>
+    <item>
+      <title>Nigerian fintechs  react to new   CBN guidelines - Money Daily</title>
+      <link>https://news.google.com/rss/articles/sample-2</link>
+      <pubDate>Sat, 21 Nov 2026 14:05:00 -0000</pubDate>
+      <source url="https://moneydaily.example">Money Daily</source>
+    </item>
+    <item>
+      <title>Paystack hosts developer meetup in Lagos - Dev Weekly</title>
+      <link>https://news.google.com/rss/articles/sample-3</link>
+      <pubDate>Wed, 18 Nov 2026 10:00:00 GMT</pubDate>
+      <source url="https://devweekly.example">Dev Weekly</source>
+    </item>
+    <item>
+      <title>Headline with no link - Somewhere</title>
+      <pubDate>Sun, 22 Nov 2026 08:00:00 GMT</pubDate>
+      <source url="https://somewhere.example">Somewhere</source>
+    </item>
+  </channel>
+</rss>

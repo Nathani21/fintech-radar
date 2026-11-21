@@ -104,3 +104,16 @@ def test_unknown_region():
     text = DIGEST + '[[companies]]\nname = "Kuda"\nregion = "lagos"\n'
     with pytest.raises(ValueError, match="region must be one of"):
         parse_config(text)
+
+
+
+def test_custom_search_is_allowed():
+    text = DIGEST + '[[companies]]\nname = "Kuda"\nregion = "nigeria"\nsearch = \'"Kuda" bank\'\n'
+    assert parse_config(text)["companies"][0]["search"] == '"Kuda" bank'
+
+
+@pytest.mark.parametrize("value", ['"  "', "5"])
+def test_bad_search(value):
+    text = DIGEST + f'[[companies]]\nname = "Kuda"\nregion = "nigeria"\nsearch = {value}\n'
+    with pytest.raises(ValueError, match="search must be non-empty text"):
+        parse_config(text)
