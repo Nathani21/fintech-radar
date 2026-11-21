@@ -33,7 +33,7 @@ def test_real_config_is_valid():
 
 def test_valid_config_parses():
     config = parse_config(DIGEST + COMPANIES)
-    assert config["digest"]["max_jobs"] == 5
+    assert config["digest"]["max_jobs"] == 6
     assert company_names(config) == ["Paystack", "Wave"]
 
 
