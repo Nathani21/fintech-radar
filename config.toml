@@ -1,0 +1,51 @@
+# fintech-radar settings.
+# Personal values (your email address, app password, API keys) never go in this file.
+# They live in GitHub Secrets, because this repo is public.
+
+[digest]
+# The most items each section of the email can show. 0 hides the section.
+max_jobs = 5
+max_news = 5
+max_regulation = 2
+max_events = 3
+
+# region is one of: nigeria, africa, international
+[[companies]]
+name = "Flutterwave"
+region = "nigeria"
+
+[[companies]]
+name = "Paystack"
+region = "nigeria"
+
+[[companies]]
+name = "Moniepoint"
+region = "nigeria"
+
+[[companies]]
+name = "Kuda"
+region = "nigeria"
+
+[[companies]]
+name = "OPay"
+region = "nigeria"
+
+[[companies]]
+name = "PalmPay"
+region = "nigeria"
+
+[[companies]]
+name = "Interswitch"
+region = "nigeria"
+
+[[companies]]
+name = "PiggyVest"
+region = "nigeria"
+
+[[companies]]
+name = "Cowrywise"
+region = "nigeria"
+
+[[companies]]
+name = "Carbon"
+region = "nigeria"

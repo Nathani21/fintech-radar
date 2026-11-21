@@ -1,0 +1,1 @@
+"""fintech-radar: a daily email digest of African fintech news, jobs and events."""
