@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+tone_instructions: "Explain the why behind each suggestion. The author is learning, so keep it clear and concrete."
+
+reviews:
+  profile: chill
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!**/*.png"
+  path_instructions:
+    - path: "radar/**/*.py"
+      instructions: >-
+        Parsing, filtering, ranking and formatting must be pure functions that tests can call
+        without the network. Network, email (SMTP) and AI calls belong only in thin wrapper
+        functions. Every function needs a docstring. Flag any secret (password, API key,
+        email address) that is hard-coded, printed or logged: this repo is public.
+    - path: "tests/**/*.py"
+      instructions: >-
+        Tests must never make real network, email or AI calls. Use saved sample responses
+        in tests/fixtures/ instead. Floats are compared with pytest.approx, never ==.
+    - path: "config.toml"
+      instructions: >-
+        Settings only. Must never contain personal data or secrets; those live in GitHub Secrets.
+    - path: ".github/workflows/**"
+      instructions: >-
+        The test job must stay named "test", because branch protection requires that check.
+        Secrets must come from GitHub Secrets and must never be echoed. Keep permissions
+        as narrow as possible.
+
+chat:
+  auto_reply: true
