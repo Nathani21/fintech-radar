@@ -1,0 +1,2 @@
+# Direct dependencies only, pinned with ==.
+# None yet: config.toml is read with tomllib, which is built into Python 3.11+.
