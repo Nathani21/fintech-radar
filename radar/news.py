@@ -3,6 +3,7 @@
 Parsing, filtering and merging are pure functions. Only fetch_url touches the network.
 """
 
+import http.client
 import re
 import urllib.parse
 import urllib.request
@@ -128,7 +129,8 @@ def collect_news(config, now, fetch=fetch_url):
         name = company["name"].strip()
         try:
             feed = parse_feed(fetch(google_news_url(search_query(company))), name)
-        except (OSError, ValueError) as error:
+        # http.client errors such as IncompleteRead are not OSErrors, so catch them too
+        except (OSError, ValueError, http.client.HTTPException) as error:
             errors.append(f"{name}: {error}")
             continue
         items.extend(item for item in feed if is_recent(item, now))

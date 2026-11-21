@@ -1,3 +1,5 @@
+import http.client
+
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -162,3 +164,27 @@ def test_collect_news_reports_bad_xml():
     items, errors = collect_news(config, NOW, fetch=lambda url: "not xml")
     assert items == []
     assert errors[0].startswith("Paystack: feed is not valid XML")
+
+
+
+def test_collect_news_survives_broken_http_response():
+    config = {
+        "companies": [
+            {"name": "Paystack", "region": "nigeria"},
+            {"name": "Kuda", "region": "nigeria"},
+            {"name": "Flutterwave", "region": "nigeria"},
+        ]
+    }
+    fetched = []
+
+    def fake_fetch(url):
+        fetched.append(url)
+        if "Kuda" in url:
+            raise http.client.IncompleteRead(b"partial")
+        return PAYSTACK_FEED
+
+    items, errors = collect_news(config, NOW, fetch=fake_fetch)
+
+    assert len(fetched) == 3  # the company after the broken one is still fetched
+    assert len(items) == 2  # earlier results are kept
+    assert len(errors) == 1 and errors[0].startswith("Kuda: ")
