@@ -45,7 +45,7 @@ def check_digest(digest):
 
 
 def check_companies(companies):
-    """Check that each company has a unique name and a known region."""
+    """Check each company: a unique name, a known region, and an optional non-empty search."""
     if not isinstance(companies, list) or not companies:
         raise ValueError("config.toml needs at least one [[companies]] entry.")
     seen = set()
@@ -61,6 +61,9 @@ def check_companies(companies):
             raise ValueError(
                 f"{name.strip()}: region must be one of {', '.join(REGIONS)}."
             )
+        search = company.get("search")
+        if search is not None and (not isinstance(search, str) or not search.strip()):
+            raise ValueError(f"{name.strip()}: search must be non-empty text if given.")
 
 
 def company_names(config, region=None):

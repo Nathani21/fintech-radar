@@ -10,6 +10,8 @@ max_regulation = 2
 max_events = 3
 
 # region is one of: nigeria, africa, international
+# search is optional. Without it the news search is the quoted name, e.g. "Paystack".
+# Add one when the name alone finds unrelated stories.
 [[companies]]
 name = "Flutterwave"
 region = "nigeria"
@@ -25,6 +27,7 @@ region = "nigeria"
 [[companies]]
 name = "Kuda"
 region = "nigeria"
+search = '"Kuda" bank'
 
 [[companies]]
 name = "OPay"
@@ -49,3 +52,4 @@ region = "nigeria"
 [[companies]]
 name = "Carbon"
 region = "nigeria"
+search = '"Carbon" fintech Nigeria'
