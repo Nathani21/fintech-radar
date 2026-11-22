@@ -1,0 +1,31 @@
+name: Daily digest
+
+on:
+  schedule:
+    # Cron uses UTC. 10:40 UTC is 11:40 in Lagos; GitHub often starts scheduled runs late,
+    # so this aims for the email to land around noon.
+    - cron: "40 10 * * *"
+  workflow_dispatch: # adds a "Run workflow" button on the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-digest # never send two digests at once
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Build and send the digest
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python -m radar --send
