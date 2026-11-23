@@ -175,3 +175,32 @@ def test_gemini_key_is_read_from_dotenv_for_previews(tmp_path):
         env_path=tmp_path / ".env",
     )
     assert keys == ["from-file"]
+
+
+def test_max_news_zero_hides_news_and_skips_ai(tmp_path, monkeypatch):
+    import radar.cli as cli
+
+    real_load_config = cli.load_config
+
+    def config_with_no_news():
+        config = real_load_config()
+        config["digest"]["max_news"] = 0
+        return config
+
+    def exploding_ask(prompt, key, model):
+        raise AssertionError("should not call the AI when News is hidden")
+
+    monkeypatch.setattr(cli, "load_config", config_with_no_news)
+    code = main(
+        [],
+        env={"GEMINI_API_KEY": "SECRET-KEY"},
+        now=NOW,
+        fetch=fake_fetch,
+        ask=exploding_ask,
+        preview_path=tmp_path / "preview.html",
+        env_path=tmp_path / ".env",
+    )
+    html = (tmp_path / "preview.html").read_text(encoding="utf-8")
+    assert code == 0
+    assert "News" not in html
+    assert "No new fintech headlines" not in html
