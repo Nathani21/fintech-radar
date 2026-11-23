@@ -7,6 +7,7 @@ import pytest
 from radar.jobs import (
     board_url,
     collect_jobs,
+    days_ago,
     has_word,
     is_entry_level,
     job_item,
@@ -278,3 +279,63 @@ def test_collect_jobs_reports_bad_responses(body, message):
     jobs, errors = collect_jobs(settings, NOW, fetch=lambda url: body)
     assert jobs == []
     assert errors[0].startswith("Moniepoint jobs: ") and message in errors[0]
+
+
+# --- review fixes from #12
+
+
+def workable_job(published_on, **extra):
+    """A minimal Workable job in Lagos."""
+    return {
+        "title": "Data Analyst",
+        "shortcode": published_on,
+        "url": f"https://apply.workable.com/j/{published_on}",
+        "published_on": published_on,
+        "locations": [{"city": "Lagos", "country": "Nigeria"}],
+        **extra,
+    }
+
+
+def test_age_cutoff_matches_the_label_in_lagos_days():
+    settings = {**SETTINGS, "max_age_days": 3}
+    jobs = parse_workable(
+        {"jobs": [workable_job("2026-11-18"), workable_job("2026-11-17")]}, "Kuda"
+    )
+    chosen = select_jobs(jobs, settings, NOW)  # NOW is 21 Nov
+    assert [job_item(job, NOW)["meta"] for job in chosen] == [
+        "Kuda · Lagos, Nigeria · posted 3 days ago"
+    ]
+
+
+def test_age_cutoff_ignores_the_hour_of_posting():
+    settings = {**SETTINGS, "max_age_days": 3, "boards": []}
+    early = {**greenhouse_jobs()[0], "posted": parse_timestamp("2026-11-18T00:30:00+01:00")}
+    late = {**early, "key": "late", "posted": parse_timestamp("2026-11-18T23:30:00+01:00")}
+    assert len(select_jobs([early, late], settings, NOW)) == 2  # both 18 Nov in Lagos
+
+
+def test_days_ago_uses_lagos_dates():
+    assert days_ago(parse_timestamp("2026-11-20T23:30:00+00:00"), NOW) == 0  # 21 Nov in Lagos
+    assert days_ago(parse_day("2026-11-18"), NOW) == 3
+
+
+@pytest.mark.parametrize("locations", [5, "Lagos", None, {"city": "Lagos"}])
+def test_workable_odd_locations_fall_back_to_the_top_level(locations):
+    job = workable_job("2026-11-20", locations=locations, city="Abuja", country="Nigeria")
+    parsed = parse_workable({"jobs": [job]}, "Kuda")
+    assert parsed[0]["locations"] == ["Abuja, Nigeria"]
+
+
+def test_parser_surprise_is_reported_not_raised(monkeypatch):
+    import radar.jobs as jobs_module
+
+    def broken_parser(data, company):
+        raise TypeError("'int' object is not iterable")
+
+    monkeypatch.setitem(jobs_module.PARSERS, "workable", broken_parser)
+    jobs, errors = collect_jobs(FOREVER, NOW, fetch=fake_fetch)
+    assert errors == [
+        "Kuda jobs: unexpected response (TypeError)",
+        "PiggyVest jobs: unexpected response (TypeError)",
+    ]
+    assert jobs and all(job["company"] == "Moniepoint" for job in jobs)

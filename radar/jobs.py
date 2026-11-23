@@ -9,7 +9,7 @@ import http.client
 import json
 import re
 import urllib.parse
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 
 from radar.digest import LAGOS
 from radar.news import fetch_url
@@ -85,7 +85,8 @@ def parse_greenhouse(data, company):
 
 def workable_locations(job):
     """Readable location strings for a Workable job, prefixed 'Remote, ' if it is remote."""
-    entries = [loc for loc in job.get("locations") or [] if isinstance(loc, dict)]
+    raw = job.get("locations")
+    entries = [loc for loc in raw if isinstance(loc, dict)] if isinstance(raw, list) else []
     entries = [loc for loc in entries if not loc.get("hidden")] or [job]
     names = []
     for loc in entries:
@@ -149,9 +150,14 @@ def nigerian_place(job, places):
     return None
 
 
+def days_ago(posted, now):
+    """Whole Lagos calendar days between `posted` and `now` (0 = today)."""
+    return (now.astimezone(LAGOS).date() - posted.astimezone(LAGOS).date()).days
+
+
 def posted_label(posted, now):
     """'posted today', 'posted yesterday' or 'posted 3 days ago', by Lagos calendar day."""
-    days = (now.astimezone(LAGOS).date() - posted.astimezone(LAGOS).date()).days
+    days = days_ago(posted, now)
     if days <= 0:
         return "posted today"
     return "posted yesterday" if days == 1 else f"posted {days} days ago"
@@ -160,13 +166,15 @@ def posted_label(posted, now):
 def select_jobs(jobs, settings, now):
     """Keep recent, entry-level jobs in the configured Nigerian places.
 
-    One job per role (the same role posted in several places counts once), newest first.
+    "Recent" means posted at most max_age_days Lagos calendar days ago, the same count the
+    "posted N days ago" label shows. One job per role (the same role posted in several
+    places counts once), newest first.
     """
-    cutoff = now - timedelta(days=settings["max_age_days"])
     chosen, seen = [], set()
     for job in sorted(jobs, key=lambda job: job["posted"], reverse=True):
         place = nigerian_place(job, settings["places"])
-        if job["key"] in seen or place is None or job["posted"] < cutoff:
+        too_old = days_ago(job["posted"], now) > settings["max_age_days"]
+        if job["key"] in seen or place is None or too_old:
             continue
         if not is_entry_level(job, settings["exclude_titles"]):
             continue
@@ -197,4 +205,9 @@ def collect_jobs(settings, now, fetch=fetch_url):
             jobs.extend(PARSERS[board["source"]](data, board["company"]))
         except (OSError, ValueError, http.client.HTTPException) as error:
             errors.append(f"{board['company']} jobs: {error}")
+        except (TypeError, AttributeError, KeyError) as error:
+            # A response shape the parser didn't expect. Report it (it shows in the logs and
+            # the email footer) rather than lose the whole email over one board.
+            name = type(error).__name__
+            errors.append(f"{board['company']} jobs: unexpected response ({name})")
     return select_jobs(jobs, settings, now), errors
