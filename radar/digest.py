@@ -46,7 +46,7 @@ def meta_line(item, now):
     return " · ".join(part for part in parts if part)
 
 
-def render_html(shown, total, errors, now):
+def render_html(shown, total, errors, now, one_thing="", notes=()):
     """Build the HTML email body. Inline styles, because many email apps ignore <style>."""
     date = now.astimezone(LAGOS).strftime("%A %d %B %Y")
     parts = [
@@ -55,6 +55,11 @@ def render_html(shown, total, errors, now):
         '<h1 style="font-size:20px;margin:0">fintech-radar</h1>',
         f'<p style="{MUTED};margin:2px 0 20px">{escape(date)}</p>',
     ]
+    if one_thing:
+        parts.append(
+            '<p style="background:#ecfdf5;border-left:3px solid #047857;padding:10px 12px;'
+            f'margin:0 0 20px"><strong>Today:</strong> {escape(one_thing)}</p>'
+        )
     if shown:
         more = f" · showing {len(shown)} of {total}" if total > len(shown) else ""
         parts.append(
@@ -69,27 +74,36 @@ def render_html(shown, total, errors, now):
                     f'<a href="{escape(link, quote=True)}" style="color:#047857;'
                     f'text-decoration:none;font-weight:600">{title}</a>'
                 )
+            why = item.get("why")
+            why_html = f'<div style="font-size:14px;color:#374151">{escape(why)}</div>' if why else ""
             parts.append(
                 f'<div style="margin:0 0 14px"><div style="font-size:15px">{title}</div>'
-                f'<div style="{MUTED}">{escape(meta_line(item, now))}</div></div>'
+                f'{why_html}<div style="{MUTED}">{escape(meta_line(item, now))}</div></div>'
             )
     else:
         parts.append("<p>No new fintech headlines in the last 24 hours.</p>")
     if errors:
         names = escape(", ".join(failed_names(errors)))
         parts.append(f'<p style="{MUTED};margin-top:24px">Couldn\'t reach today: {names}</p>')
+    for note in notes:
+        parts.append(f'<p style="{MUTED}">{escape(note)}</p>')
     parts.append("</div>")
     return "\n".join(parts)
 
 
-def render_text(shown, total, errors, now):
+def render_text(shown, total, errors, now, one_thing="", notes=()):
     """Build the plain-text body, for email apps that don't show HTML."""
     lines = ["fintech-radar", now.astimezone(LAGOS).strftime("%A %d %B %Y"), ""]
+    if one_thing:
+        lines += [f"TODAY: {one_thing}", ""]
     if shown:
         more = f" (showing {len(shown)} of {total})" if total > len(shown) else ""
         lines += [f"NEWS{more}", ""]
         for item in shown:
-            lines += [item["title"], f"  {meta_line(item, now)}"]
+            lines.append(item["title"])
+            if item.get("why"):
+                lines.append(f"  {item['why']}")
+            lines.append(f"  {meta_line(item, now)}")
             if safe_link(item["link"]):
                 lines.append(f"  {item['link']}")
             lines.append("")
@@ -97,14 +111,17 @@ def render_text(shown, total, errors, now):
         lines += ["No new fintech headlines in the last 24 hours.", ""]
     if errors:
         lines.append(f"Couldn't reach today: {', '.join(failed_names(errors))}")
+    lines += list(notes)
     return "\n".join(lines).rstrip() + "\n"
 
 
-def build_digest(news, errors, limits, now):
-    """Build (subject, html, text). `news` is newest first; `limits` is config['digest']."""
-    shown = news[: limits["max_news"]]
+def build_digest(shown, total, errors, now, one_thing="", notes=()):
+    """Build (subject, html, text) from the chosen items.
+
+    `total` is how many headlines were collected; `notes` are short lines for the footer.
+    """
     return (
         build_subject(len(shown), now),
-        render_html(shown, len(news), errors, now),
-        render_text(shown, len(news), errors, now),
+        render_html(shown, total, errors, now, one_thing, notes),
+        render_text(shown, total, errors, now, one_thing, notes),
     )

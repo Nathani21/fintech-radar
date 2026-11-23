@@ -7,7 +7,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from radar.config import load_config
+from radar.ai import AIError, call_gemini, rank_news
+from radar.config import ai_settings, load_config
 from radar.digest import build_digest
 from radar.emailer import build_message, load_env_file, missing_settings, send_email
 from radar.news import collect_news, fetch_url
@@ -15,6 +16,7 @@ from radar.news import collect_news, fetch_url
 ROOT = Path(__file__).parent.parent
 PREVIEW_PATH = ROOT / "preview.html"
 ENV_PATH = ROOT / ".env"
+AI_FAILED_NOTE = "AI ranking was unavailable today, so these are the newest headlines."
 
 
 def parse_args(argv):
@@ -27,6 +29,23 @@ def parse_args(argv):
     )
     return parser.parse_args(argv)
 
+def choose_news(news, limit, settings, api_key, ask):
+    """Pick the headlines to show: AI-ranked when a key is set, otherwise the newest.
+
+    Returns (shown, one_thing, notes). If the AI fails, falls back to the newest and adds a note,
+    so the email always goes out.
+    """
+    if not api_key:
+        print("AI ranking off: GEMINI_API_KEY not set.", file=sys.stderr)
+        return news[:limit], "", []
+    try:
+        shown, one_thing = rank_news(
+            news, limit, api_key, settings["model"], settings["max_candidates"], ask=ask
+        )
+    except AIError as error:
+        print(f"AI ranking skipped: {error}", file=sys.stderr)
+        return news[:limit], "", [AI_FAILED_NOTE]
+    return shown, one_thing, []
 
 def main(
     argv=None,
@@ -35,6 +54,7 @@ def main(
     now=None,
     fetch=fetch_url,
     send=send_email,
+    ask=call_gemini,
     preview_path=PREVIEW_PATH,
     env_path=ENV_PATH,
 ):
@@ -46,8 +66,8 @@ def main(
     env = os.environ if env is None else env
     now = now or datetime.now(timezone.utc)
 
+    load_env_file(env_path, env)  # previews can use the Gemini key too
     if args.send:  # check settings before doing any work
-        load_env_file(env_path, env)
         missing = missing_settings(env)
         if missing:
             print(
@@ -61,7 +81,14 @@ def main(
     news, errors = collect_news(config, now, fetch=fetch)
     for error in errors:
         print(f"Could not fetch {error}", file=sys.stderr)
-    subject, html, text = build_digest(news, errors, config["digest"], now)
+    shown, one_thing, notes = choose_news(
+        news,
+        config["digest"]["max_news"],
+        ai_settings(config),
+        env.get("GEMINI_API_KEY", "").strip(),
+        ask,
+    )
+    subject, html, text = build_digest(shown, len(news), errors, now, one_thing, notes)
 
     if not args.send:
         Path(preview_path).write_text(html, encoding="utf-8")
