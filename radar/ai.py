@@ -7,6 +7,7 @@ to the newest headlines, so a bad AI day never stops the email.
 
 import http.client
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -14,6 +15,9 @@ import urllib.request
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 MAX_WHY_LENGTH = 200
 MAX_ONE_THING_LENGTH = 240
+# Busy or rate-limited: worth waiting and trying again. Other errors (400, 403, 404) are not.
+RETRY_STATUS = {429, 500, 502, 503, 504}
+RETRY_WAITS = (10, 30)  # seconds to wait before the 2nd and 3rd tries
 
 INSTRUCTIONS = """You choose news for a daily email read by an aspiring entry-level fintech engineer in Nigeria.
 
@@ -33,7 +37,14 @@ Headlines:
 
 
 class AIError(Exception):
-    """The AI step failed. Messages are safe to log: they never contain the API key."""
+    """The AI step failed. Messages are safe to log: they never contain the API key.
+
+    `retryable` is True when trying again later might work (busy server, network drop).
+    """
+
+    def __init__(self, message, retryable=False):
+        super().__init__(message)
+        self.retryable = retryable
 
 
 def build_prompt(items, limit):
@@ -121,8 +132,26 @@ def parse_ranking(text, item_count, limit):
     return one_thing, picks
 
 
-def call_gemini(prompt, api_key, model, timeout=60):
-    """Send the prompt to Gemini and return the reply text. The key goes in a header, never the URL."""
+def call_gemini(prompt, api_key, model, timeout=60, waits=RETRY_WAITS, sleep=time.sleep):
+    """Send the prompt to Gemini and return the reply text, retrying when it's worth it.
+
+    A retryable failure waits for each delay in `waits` and tries again; anything else, or
+    the last failure, raises AIError. `sleep` is swappable so tests don't actually wait.
+    """
+    for attempt, wait in enumerate((*waits, None), start=1):
+        try:
+            return request_gemini(prompt, api_key, model, timeout)
+        except AIError as error:
+            if not error.retryable:
+                raise
+            if wait is None:
+                tries = "1 try" if attempt == 1 else f"{attempt} tries"
+                raise AIError(f"{error} (gave up after {tries})") from error
+            sleep(wait)
+
+
+def request_gemini(prompt, api_key, model, timeout):
+    """One request to Gemini. The key goes in a header, never the URL."""
     request = urllib.request.Request(
         API_URL.format(model=urllib.parse.quote(model, safe="")),
         data=json.dumps(build_request(prompt)).encode("utf-8"),
@@ -133,9 +162,11 @@ def call_gemini(prompt, api_key, model, timeout=60):
         with urllib.request.urlopen(request, timeout=timeout) as response:
             body = response.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as error:
-        raise AIError(f"Gemini returned HTTP {error.code}: {error_message(error)}") from error
+        message = f"Gemini returned HTTP {error.code}: {error_message(error)}"
+        raise AIError(message, retryable=error.code in RETRY_STATUS) from error
     except (OSError, http.client.HTTPException) as error:
-        raise AIError(f"could not reach Gemini ({type(error).__name__})") from error
+        message = f"could not reach Gemini ({type(error).__name__})"
+        raise AIError(message, retryable=True) from error
     try:
         return extract_text(json.loads(body))
     except (json.JSONDecodeError, AttributeError) as error:

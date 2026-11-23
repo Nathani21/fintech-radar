@@ -234,7 +234,7 @@ def test_call_gemini_network_error(monkeypatch):
 
     monkeypatch.setattr(ai.urllib.request, "urlopen", fake_urlopen)
     with pytest.raises(AIError, match="could not reach Gemini .TimeoutError."):
-        call_gemini("prompt", "key", "m")
+        call_gemini("prompt", "key", "m", sleep=lambda seconds: None)
 
 
 def test_call_gemini_bad_json_response(monkeypatch):
@@ -244,3 +244,83 @@ def test_call_gemini_bad_json_response(monkeypatch):
     monkeypatch.setattr(ai.urllib.request, "urlopen", fake_urlopen)
     with pytest.raises(AIError, match="not the expected JSON"):
         call_gemini("prompt", "key", "m")
+
+
+
+# --- retries
+
+
+def http_error(code, message="busy"):
+    """A urllib HTTPError like Google sends, with a JSON error body."""
+    body = io.BytesIO(json.dumps({"error": {"message": message}}).encode())
+    return urllib.error.HTTPError("https://example.test", code, "error", {}, body)
+
+
+def scripted_urlopen(monkeypatch, outcomes):
+    """Make urlopen return or raise each outcome in turn; returns the list of calls."""
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        outcome = outcomes[len(calls)]
+        calls.append(request)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return FakeResponse(json.dumps(gemini_response(outcome)).encode())
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", fake_urlopen)
+    return calls
+
+
+def test_busy_then_ok_retries_once(monkeypatch):
+    calls = scripted_urlopen(monkeypatch, [http_error(503), "hello"])
+    waits = []
+    assert call_gemini("prompt", "key", "m", sleep=waits.append) == "hello"
+    assert len(calls) == 2
+    assert waits == [10]
+
+
+def test_network_drop_then_ok(monkeypatch):
+    scripted_urlopen(monkeypatch, [TimeoutError("timed out"), "hello"])
+    assert call_gemini("prompt", "key", "m", sleep=lambda seconds: None) == "hello"
+
+
+def test_still_busy_gives_up_after_three_tries(monkeypatch):
+    calls = scripted_urlopen(
+        monkeypatch, [http_error(503), http_error(429), http_error(503, "high demand")]
+    )
+    waits = []
+    with pytest.raises(AIError, match="HTTP 503: high demand .gave up after 3 tries.") as error:
+        call_gemini("prompt", "SECRET-KEY", "m", sleep=waits.append)
+    assert len(calls) == 3
+    assert waits == [10, 30]
+    assert "SECRET-KEY" not in str(error.value)
+
+
+@pytest.mark.parametrize("code", [400, 403, 404])
+def test_errors_that_waiting_cannot_fix_are_not_retried(monkeypatch, code):
+    calls = scripted_urlopen(monkeypatch, [http_error(code, "nope"), "hello"])
+    waits = []
+    with pytest.raises(AIError, match=f"HTTP {code}: nope$"):
+        call_gemini("prompt", "key", "m", sleep=waits.append)
+    assert len(calls) == 1
+    assert waits == []
+
+
+def test_bad_reply_is_not_retried(monkeypatch):
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        calls.append(request)
+        return FakeResponse(b"<html>")
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", fake_urlopen)
+    with pytest.raises(AIError, match="not the expected JSON"):
+        call_gemini("prompt", "key", "m", sleep=lambda seconds: None)
+    assert len(calls) == 1
+
+
+def test_no_waits_means_one_try(monkeypatch):
+    calls = scripted_urlopen(monkeypatch, [http_error(503)])
+    with pytest.raises(AIError, match="gave up after 1 try"):
+        call_gemini("prompt", "key", "m", waits=())
+    assert len(calls) == 1
