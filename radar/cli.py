@@ -9,7 +9,7 @@ from pathlib import Path
 
 from radar.ai import AIError, call_gemini, rank_news
 from radar.config import ai_settings, load_config
-from radar.digest import build_digest
+from radar.digest import build_digest, news_section
 from radar.emailer import build_message, load_env_file, missing_settings, send_email
 from radar.news import collect_news, fetch_url
 
@@ -81,14 +81,14 @@ def main(
     news, errors = collect_news(config, now, fetch=fetch)
     for error in errors:
         print(f"Could not fetch {error}", file=sys.stderr)
-    shown, one_thing, notes = choose_news(
-        news,
-        config["digest"]["max_news"],
-        ai_settings(config),
-        env.get("GEMINI_API_KEY", "").strip(),
-        ask,
-    )
-    subject, html, text = build_digest(shown, len(news), errors, now, one_thing, notes)
+    sections, one_thing, notes = [], "", []
+    max_news = config["digest"]["max_news"]
+    if max_news > 0:  # 0 hides the section, so don't spend an AI call on it
+        shown, one_thing, notes = choose_news(
+            news, max_news, ai_settings(config), env.get("GEMINI_API_KEY", "").strip(), ask
+        )
+        sections.append(news_section(shown, len(news)))
+    subject, html, text = build_digest(sections, errors, now, one_thing, notes)
 
     if not args.send:
         Path(preview_path).write_text(html, encoding="utf-8")

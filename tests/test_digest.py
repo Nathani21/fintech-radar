@@ -7,6 +7,7 @@ from radar.digest import (
     build_subject,
     failed_names,
     format_age,
+    news_section,
     safe_link,
 )
 
@@ -59,37 +60,64 @@ def test_failed_names():
     ]
 
 
+def news(items, total=None):
+    """A one-section list: News with `items`, collected total defaulting to len(items)."""
+    return [news_section(items, len(items) if total is None else total)]
+
+
+def jobs_like_section(items):
+    """A second section, to check the email handles more than one."""
+    return {
+        "title": "Jobs",
+        "items": items,
+        "total": len(items),
+        "noun": ("job", "jobs"),
+        "empty": "No new jobs.",
+    }
+
+
 def test_subject_uses_lagos_date_and_plural():
     late_night_utc = datetime(2026, 11, 22, 23, 30, tzinfo=timezone.utc)  # already 23 Nov in Lagos
-    assert build_subject(2, late_night_utc) == "fintech-radar · Mon 23 Nov · 2 headlines"
-    assert build_subject(1, NOW) == "fintech-radar · Sun 22 Nov · 1 headline"
-    assert build_subject(0, NOW) == "fintech-radar · Sun 22 Nov · quiet day"
+    two = news([make_item("A"), make_item("B")])
+    assert build_subject(two, late_night_utc) == "fintech-radar · Mon 23 Nov · 2 headlines"
+    assert build_subject(news([make_item("A")]), NOW) == "fintech-radar · Sun 22 Nov · 1 headline"
+    assert build_subject(news([]), NOW) == "fintech-radar · Sun 22 Nov · quiet day"
+    assert build_subject([], NOW) == "fintech-radar · Sun 22 Nov · quiet day"
+
+
+def test_subject_counts_each_section():
+    sections = news([make_item("A"), make_item("B")]) + [jobs_like_section([make_item("J")])]
+    assert build_subject(sections, NOW) == "fintech-radar · Sun 22 Nov · 2 headlines, 1 job"
+
+
+def test_subject_skips_empty_sections():
+    sections = news([]) + [jobs_like_section([make_item("J")])]
+    assert build_subject(sections, NOW) == "fintech-radar · Sun 22 Nov · 1 job"
 
 
 def test_digest_shows_count_of_total():
-    shown = [make_item("One"), make_item("Two")]
-    subject, html, text = build_digest(shown, 3, [], NOW)
+    subject, html, text = build_digest(news([make_item("One"), make_item("Two")], 3), [], NOW)
     assert subject.endswith("2 headlines")
     assert "One" in html and "Two" in html
     assert "showing 2 of 3" in html
-    assert "(showing 2 of 3)" in text
+    assert "NEWS (showing 2 of 3)" in text
 
 
 def test_digest_hides_count_when_all_shown():
-    _, html, _ = build_digest([make_item("One")], 1, [], NOW)
+    _, html, _ = build_digest(news([make_item("One")]), [], NOW)
     assert "showing" not in html
 
 
 def test_digest_escapes_untrusted_text():
     shown = [make_item('<script>alert("x")</script> & co', link='https://e.com/?a=1&b="2"')]
-    _, html, _ = build_digest(shown, 1, [], NOW)
+    _, html, _ = build_digest(news(shown), [], NOW)
     assert "<script>" not in html
     assert "&lt;script&gt;" in html
     assert 'href="https://e.com/?a=1&amp;b=&quot;2&quot;"' in html
 
 
 def test_digest_drops_unsafe_links():
-    _, html, text = build_digest([make_item("Sneaky", link="javascript:alert(1)")], 1, [], NOW)
+    _, html, text = build_digest(news([make_item("Sneaky", link="javascript:alert(1)")]), [], NOW)
     assert "javascript" not in html
     assert "javascript" not in text
     assert "Sneaky" in html
@@ -97,14 +125,14 @@ def test_digest_drops_unsafe_links():
 
 def test_digest_shows_meta_line():
     shown = [make_item("One", hours_ago=3, companies=["Paystack", "Kuda"])]
-    _, html, text = build_digest(shown, 1, [], NOW)
+    _, html, text = build_digest(news(shown), [], NOW)
     assert "TechCabal · 3h ago · Paystack, Kuda" in text
     assert "TechCabal · 3h ago · Paystack, Kuda" in html
 
 
 def test_digest_shows_one_thing_and_why_escaped():
     item = {**make_item("One"), "why": "Matters for <payments> & you"}
-    _, html, text = build_digest([item], 1, [], NOW, one_thing="CBN <rules> changed")
+    _, html, text = build_digest(news([item]), [], NOW, one_thing="CBN <rules> changed")
     assert "<strong>Today:</strong> CBN &lt;rules&gt; changed" in html
     assert "Matters for &lt;payments&gt; &amp; you" in html
     assert "TODAY: CBN <rules> changed" in text
@@ -112,20 +140,35 @@ def test_digest_shows_one_thing_and_why_escaped():
 
 
 def test_digest_without_ai_has_no_today_line():
-    _, html, text = build_digest([make_item("One")], 1, [], NOW)
+    _, html, text = build_digest(news([make_item("One")]), [], NOW)
     assert "Today:" not in html
     assert "TODAY" not in text
 
 
 def test_digest_shows_notes():
-    _, html, text = build_digest([make_item("One")], 1, [], NOW, notes=["AI was down."])
+    _, html, text = build_digest(news([make_item("One")]), [], NOW, notes=["AI was down."])
     assert "AI was down." in html
     assert "AI was down." in text
 
 
 def test_quiet_day_with_errors():
-    subject, html, text = build_digest([], 0, ["Kuda: timed out"], NOW)
+    subject, html, text = build_digest(news([]), ["Kuda: timed out"], NOW)
     assert subject.endswith("quiet day")
     assert "No new fintech headlines" in html
     assert "Couldn't reach today: Kuda" in text
     assert "timed out" not in html  # error details stay in the logs, not the email
+
+
+def test_sections_render_in_order_with_their_own_empty_line():
+    sections = news([make_item("Headline")]) + [jobs_like_section([])]
+    _, html, text = build_digest(sections, [], NOW)
+    assert html.index(">News<") < html.index(">Jobs<")
+    assert "No new jobs." in html
+    assert text.index("NEWS") < text.index("JOBS")
+
+
+def test_hidden_section_is_not_mentioned():
+    _, html, text = build_digest([], [], NOW)
+    assert "News" not in html
+    assert "No new fintech headlines" not in html
+    assert "NEWS" not in text
