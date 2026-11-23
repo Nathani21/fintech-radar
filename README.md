@@ -50,10 +50,14 @@ Parsing and filtering are pure functions. Network, email and AI calls are swappa
 
 ## Settings: `config.toml`
 
+Part of the real file, to show what the settings look like. Edit the real `config.toml` rather than copying this.
+
 ```toml
 [digest]
 max_jobs = 5   # 0 hides a section
 max_news = 5
+max_regulation = 2   # reserved for the planned CBN section
+max_events = 3       # reserved for the planned events section
 
 [ai]
 model = "gemini-3.1-flash-lite"   # check it exists and is free in Google AI Studio
@@ -72,8 +76,6 @@ region = "nigeria"
 search = '"Kuda" bank'   # optional: narrows the news search
 ```
 
-`max_regulation` and `max_events` are reserved for the planned CBN and events sections.
-
 ## Run your own copy
 
 1. **Fork** this repo.
@@ -82,7 +84,7 @@ search = '"Kuda" bank'   # optional: narrows the news search
 4. In your fork: **Settings → Secrets and variables → Actions**, add `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` and `GEMINI_API_KEY`.
 5. **Actions** tab → enable workflows → **Daily digest** → **Run workflow** to test it.
 
-The email goes to `GMAIL_ADDRESS` unless you add a `DIGEST_TO` secret.
+The email goes to `GMAIL_ADDRESS`. Running locally, you can send it elsewhere with `DIGEST_TO` in `.env`; the workflow doesn't pass that setting yet.
 
 ## Run locally
 
@@ -99,6 +101,7 @@ Create `.env` (it's in `.gitignore`):
 GMAIL_ADDRESS=you@gmail.com
 GMAIL_APP_PASSWORD=abcd efgh ijkl mnop
 GEMINI_API_KEY=your-key
+# DIGEST_TO=someone@example.com   (optional: send somewhere other than GMAIL_ADDRESS)
 ```
 
 ```powershell
