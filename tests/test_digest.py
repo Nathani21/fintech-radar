@@ -66,40 +66,65 @@ def test_subject_uses_lagos_date_and_plural():
     assert build_subject(0, NOW) == "fintech-radar · Sun 22 Nov · quiet day"
 
 
-def test_digest_respects_max_news():
-    news = [make_item("One"), make_item("Two"), make_item("Three")]
-    subject, html, text = build_digest(news, [], LIMITS, NOW)
+def test_digest_shows_count_of_total():
+    shown = [make_item("One"), make_item("Two")]
+    subject, html, text = build_digest(shown, 3, [], NOW)
     assert subject.endswith("2 headlines")
-    assert "One" in html and "Two" in html and "Three" not in html
+    assert "One" in html and "Two" in html
     assert "showing 2 of 3" in html
     assert "(showing 2 of 3)" in text
 
 
+def test_digest_hides_count_when_all_shown():
+    _, html, _ = build_digest([make_item("One")], 1, [], NOW)
+    assert "showing" not in html
+
+
 def test_digest_escapes_untrusted_text():
-    news = [make_item('<script>alert("x")</script> & co', link='https://e.com/?a=1&b="2"')]
-    _, html, _ = build_digest(news, [], LIMITS, NOW)
+    shown = [make_item('<script>alert("x")</script> & co', link='https://e.com/?a=1&b="2"')]
+    _, html, _ = build_digest(shown, 1, [], NOW)
     assert "<script>" not in html
     assert "&lt;script&gt;" in html
     assert 'href="https://e.com/?a=1&amp;b=&quot;2&quot;"' in html
 
 
 def test_digest_drops_unsafe_links():
-    news = [make_item("Sneaky", link="javascript:alert(1)")]
-    _, html, text = build_digest(news, [], LIMITS, NOW)
+    _, html, text = build_digest([make_item("Sneaky", link="javascript:alert(1)")], 1, [], NOW)
     assert "javascript" not in html
     assert "javascript" not in text
     assert "Sneaky" in html
 
 
 def test_digest_shows_meta_line():
-    news = [make_item("One", hours_ago=3, companies=["Paystack", "Kuda"])]
-    _, html, text = build_digest(news, [], LIMITS, NOW)
+    shown = [make_item("One", hours_ago=3, companies=["Paystack", "Kuda"])]
+    _, html, text = build_digest(shown, 1, [], NOW)
     assert "TechCabal · 3h ago · Paystack, Kuda" in text
     assert "TechCabal · 3h ago · Paystack, Kuda" in html
 
 
+def test_digest_shows_one_thing_and_why_escaped():
+    item = {**make_item("One"), "why": "Matters for <payments> & you"}
+    _, html, text = build_digest([item], 1, [], NOW, one_thing="CBN <rules> changed")
+    assert "<strong>Today:</strong> CBN &lt;rules&gt; changed" in html
+    assert "Matters for &lt;payments&gt; &amp; you" in html
+    assert "TODAY: CBN <rules> changed" in text
+    assert "  Matters for <payments> & you" in text
+
+
+def test_digest_without_ai_has_no_today_line():
+    _, html, text = build_digest([make_item("One")], 1, [], NOW)
+    assert "Today:" not in html
+    assert "TODAY" not in text
+
+
+def test_digest_shows_notes():
+    _, html, text = build_digest([make_item("One")], 1, [], NOW, notes=["AI was down."])
+    assert "AI was down." in html
+    assert "AI was down." in text
+
+
 def test_quiet_day_with_errors():
-    subject, html, text = build_digest([], ["Kuda: timed out"], LIMITS, NOW)
+    subject, html, text = build_digest([], 0, ["Kuda: timed out"], NOW)
     assert subject.endswith("quiet day")
     assert "No new fintech headlines" in html
     assert "Couldn't reach today: Kuda" in text

@@ -10,6 +10,8 @@ CONFIG_PATH = Path(__file__).parent.parent / "config.toml"
 LIMIT_KEYS = ("max_jobs", "max_news", "max_regulation", "max_events")
 MAX_LIMIT = 10
 REGIONS = ("nigeria", "africa", "international")
+AI_DEFAULTS = {"model": "gemini-3.1-flash-lite", "max_candidates": 40}
+MAX_CANDIDATES = 100
 
 
 def parse_config(text):
@@ -23,6 +25,7 @@ def parse_config(text):
         raise ValueError(f"config.toml is not valid TOML: {error}") from error
     check_digest(data.get("digest"))
     check_companies(data.get("companies"))
+    check_ai(data.get("ai"))
     return data
 
 
@@ -65,7 +68,27 @@ def check_companies(companies):
         if search is not None and (not isinstance(search, str) or not search.strip()):
             raise ValueError(f"{name.strip()}: search must be non-empty text if given.")
 
+def check_ai(ai):
+    """Check the optional [ai] section: a model ID and how many headlines the AI chooses from."""
+    if ai is None:
+        return
+    if not isinstance(ai, dict):
+        raise ValueError("[ai] must be a section.")
+    model = ai.get("model", AI_DEFAULTS["model"])
+    if not isinstance(model, str) or not model.strip():
+        raise ValueError("[ai] model must be non-empty text.")
+    count = ai.get("max_candidates", AI_DEFAULTS["max_candidates"])
+    if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= MAX_CANDIDATES:
+        raise ValueError(f"[ai] max_candidates must be a whole number from 1 to {MAX_CANDIDATES}.")
 
+
+def ai_settings(config):
+    """The [ai] settings with defaults filled in."""
+    settings = {**AI_DEFAULTS, **config.get("ai", {})}
+    settings["model"] = settings["model"].strip()
+    return settings
+
+    
 def company_names(config, region=None):
     """Return company names in config order, optionally only those in one region."""
     return [

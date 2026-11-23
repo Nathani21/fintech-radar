@@ -2,6 +2,7 @@ import pytest
 
 from radar.config import (
     CONFIG_PATH,
+    ai_settings,
     company_names,
     load_config,
     parse_config,
@@ -117,3 +118,28 @@ def test_bad_search(value):
     text = DIGEST + f'[[companies]]\nname = "Kuda"\nregion = "nigeria"\nsearch = {value}\n'
     with pytest.raises(ValueError, match="search must be non-empty text"):
         parse_config(text)
+
+
+def test_ai_section_is_optional_with_defaults():
+    config = parse_config(DIGEST + COMPANIES)
+    assert ai_settings(config) == {"model": "gemini-3.1-flash-lite", "max_candidates": 40}
+
+
+def test_ai_section_overrides_defaults():
+    text = DIGEST + '[ai]\nmodel = " other-model "\nmax_candidates = 10\n' + COMPANIES
+    assert ai_settings(parse_config(text)) == {"model": "other-model", "max_candidates": 10}
+
+
+@pytest.mark.parametrize(
+    "ai_section, message",
+    [
+        ('model = ""', "model must be non-empty text"),
+        ("model = 3", "model must be non-empty text"),
+        ("max_candidates = 0", "max_candidates must be a whole number from 1 to 100"),
+        ("max_candidates = 101", "max_candidates must be a whole number from 1 to 100"),
+        ("max_candidates = true", "max_candidates must be a whole number"),
+    ],
+)
+def test_bad_ai_section(ai_section, message):
+    with pytest.raises(ValueError, match=message):
+        parse_config(DIGEST + f"[ai]\n{ai_section}\n" + COMPANIES)

@@ -9,6 +9,12 @@ max_news = 5
 max_regulation = 2
 max_events = 3
 
+[ai]
+# Gemini model ID. Before changing it, check in Google AI Studio that it exists
+# and is free on your account: model IDs change.
+model = "gemini-3.1-flash-lite"
+# How many of the newest headlines the AI chooses from.
+max_candidates = 40
 # region is one of: nigeria, africa, international
 # search is optional. Without it the news search is the quoted name, e.g. "Paystack".
 # Add one when the name alone finds unrelated stories.
