@@ -4,6 +4,7 @@ from radar.config import (
     CONFIG_PATH,
     ai_settings,
     company_names,
+    jobs_settings,
     load_config,
     parse_config,
 )
@@ -107,7 +108,6 @@ def test_unknown_region():
         parse_config(text)
 
 
-
 def test_custom_search_is_allowed():
     text = DIGEST + '[[companies]]\nname = "Kuda"\nregion = "nigeria"\nsearch = \'"Kuda" bank\'\n'
     assert parse_config(text)["companies"][0]["search"] == '"Kuda" bank'
@@ -143,3 +143,57 @@ def test_ai_section_overrides_defaults():
 def test_bad_ai_section(ai_section, message):
     with pytest.raises(ValueError, match=message):
         parse_config(DIGEST + f"[ai]\n{ai_section}\n" + COMPANIES)
+
+
+JOBS = """
+[jobs]
+boards = [{ company = " Kuda ", source = "workable", id = "kuda" }]
+"""
+
+
+def test_jobs_section_is_optional():
+    assert jobs_settings(parse_config(DIGEST + COMPANIES)) is None
+
+
+def test_real_config_has_job_boards():
+    settings = jobs_settings(load_config(CONFIG_PATH))
+    assert {board["source"] for board in settings["boards"]} <= {"greenhouse", "workable"}
+
+
+def test_jobs_defaults_filled_in():
+    settings = jobs_settings(parse_config(DIGEST + JOBS + COMPANIES))
+    assert settings["boards"] == [{"company": "Kuda", "source": "workable", "id": "kuda"}]
+    assert settings["max_age_days"] == 3
+    assert "Lagos" in settings["places"]
+    assert "senior" in settings["exclude_titles"]
+
+
+@pytest.mark.parametrize(
+    "jobs_section, message",
+    [
+        ("boards = []", "at least one board"),
+        ('boards = ["kuda"]', "board #1 must be"),
+        ('boards = [{ source = "workable", id = "kuda" }]', "board #1 needs a company"),
+        ('boards = [{ company = "Kuda", source = "lever", id = "kuda" }]', "source must be one of"),
+        ('boards = [{ company = "Kuda", source = "workable", id = "Kuda/../x" }]', "id must be"),
+        ('boards = [{ company = "Kuda", source = "workable" }]', "id must be"),
+    ],
+)
+def test_bad_job_boards(jobs_section, message):
+    with pytest.raises(ValueError, match=message):
+        parse_config(DIGEST + f"[jobs]\n{jobs_section}\n" + COMPANIES)
+
+
+@pytest.mark.parametrize(
+    "line, message",
+    [
+        ("max_age_days = 0", "max_age_days must be a whole number from 1 to 30"),
+        ("max_age_days = 31", "max_age_days must be a whole number from 1 to 30"),
+        ('places = "Lagos"', "places must be a list of non-empty text"),
+        ('places = ["Lagos", ""]', "places must be a list of non-empty text"),
+        ("exclude_titles = [1]", "exclude_titles must be a list of non-empty text"),
+    ],
+)
+def test_bad_job_settings(line, message):
+    with pytest.raises(ValueError, match=message):
+        parse_config(DIGEST + JOBS + line + "\n" + COMPANIES)

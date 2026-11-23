@@ -8,8 +8,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from radar.ai import AIError, call_gemini, rank_news
-from radar.config import ai_settings, load_config
-from radar.digest import build_digest, news_section
+from radar.config import ai_settings, jobs_settings, load_config
+from radar.digest import build_digest, jobs_section, news_section
+from radar.jobs import collect_jobs, job_item
 from radar.emailer import build_message, load_env_file, missing_settings, send_email
 from radar.news import collect_news, fetch_url
 
@@ -29,6 +30,7 @@ def parse_args(argv):
     )
     return parser.parse_args(argv)
 
+
 def choose_news(news, limit, settings, api_key, ask):
     """Pick the headlines to show: AI-ranked when a key is set, otherwise the newest.
 
@@ -46,6 +48,7 @@ def choose_news(news, limit, settings, api_key, ask):
         print(f"AI ranking skipped: {error}", file=sys.stderr)
         return news[:limit], "", [AI_FAILED_NOTE]
     return shown, one_thing, []
+
 
 def main(
     argv=None,
@@ -82,6 +85,14 @@ def main(
     for error in errors:
         print(f"Could not fetch {error}", file=sys.stderr)
     sections, one_thing, notes = [], "", []
+    settings, max_jobs = jobs_settings(config), config["digest"]["max_jobs"]
+    if settings and max_jobs > 0:  # jobs come first: they're the most time-sensitive
+        jobs, job_errors = collect_jobs(settings, now, fetch=fetch)
+        for error in job_errors:
+            print(f"Could not fetch {error}", file=sys.stderr)
+        errors = errors + job_errors
+        items = [job_item(job, now) for job in jobs[:max_jobs]]
+        sections.append(jobs_section(items, len(jobs), settings["max_age_days"]))
     max_news = config["digest"]["max_news"]
     if max_news > 0:  # 0 hides the section, so don't spend an AI call on it
         shown, one_thing, notes = choose_news(
