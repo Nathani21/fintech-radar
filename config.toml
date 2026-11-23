@@ -15,6 +15,25 @@ max_events = 3
 model = "gemini-3.1-flash-lite"
 # How many of the newest headlines the AI chooses from.
 max_candidates = 40
+
+[jobs]
+# Public job boards to check. source is "greenhouse" or "workable"; id is the board
+# name in its URL: job-boards.greenhouse.io/<id> or apply.workable.com/<id>.
+boards = [
+  { company = "Moniepoint", source = "greenhouse", id = "moniepoint" },
+  { company = "Kuda", source = "workable", id = "kuda" },
+  { company = "PiggyVest", source = "workable", id = "piggyvest" },
+]
+# Only jobs first posted within this many days (each job shows up in about this many emails).
+max_age_days = 3
+# A job must be in Nigeria and name one of these places.
+places = ["Lagos", "Abuja", "FCT", "Remote"]
+# Titles with any of these words are skipped as not entry level.
+exclude_titles = [
+  "senior", "sr", "lead", "head", "principal", "staff", "manager",
+  "director", "vp", "vice president", "chief", "architect",
+]
+
 # region is one of: nigeria, africa, international
 # search is optional. Without it the news search is the quoted name, e.g. "Paystack".
 # Add one when the name alone finds unrelated stories.

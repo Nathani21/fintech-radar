@@ -44,6 +44,17 @@ def news_section(items, total):
     }
 
 
+def jobs_section(items, total, max_age_days):
+    """The Jobs section: `items` are the jobs to show, `total` how many matched."""
+    return {
+        "title": "Jobs",
+        "items": items,
+        "total": total,
+        "noun": ("job", "jobs"),
+        "empty": f"No new entry-level jobs in the last {max_age_days} days.",
+    }
+
+
 def count_label(count, noun):
     """'1 headline', '3 headlines'."""
     return f"{count} {noun[0] if count == 1 else noun[1]}"
@@ -61,7 +72,10 @@ def build_subject(sections, now):
 
 
 def meta_line(item, now):
-    """'Source · 3h ago · Company, Company' for one item."""
+    """The grey line under an item: its own "meta" if it has one (jobs), otherwise
+    'Source · 3h ago · Company, Company' (news)."""
+    if item.get("meta"):
+        return item["meta"]
     parts = [item["source"], format_age(item["published"], now), ", ".join(item["companies"])]
     return " · ".join(part for part in parts if part)
 

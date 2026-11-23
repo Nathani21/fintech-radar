@@ -1,0 +1,151 @@
+{
+  "jobs": [
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/moniepoint/jobs/5040606101",
+      "internal_job_id": 4514032101,
+      "location": {
+        "name": "Lagos, Nigeria"
+      },
+      "metadata": null,
+      "id": 5040606101,
+      "updated_at": "2026-11-17T13:07:33-05:00",
+      "requisition_id": null,
+      "title": "State Inventory Officer (Lagos)",
+      "company_name": "Moniepoint",
+      "first_published": "2026-11-17T13:07:33-05:00",
+      "language": "en",
+      "application_deadline": null
+    },
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/moniepoint/jobs/5043648101",
+      "internal_job_id": 4550554101,
+      "location": {
+        "name": "Remote, Nigeria"
+      },
+      "metadata": null,
+      "id": 5043648101,
+      "updated_at": "2026-11-20T10:09:48-05:00",
+      "requisition_id": null,
+      "title": "Head of Operations & Compliance Audit",
+      "company_name": "Moniepoint",
+      "first_published": "2026-11-20T10:09:48-05:00",
+      "language": "en",
+      "application_deadline": null
+    },
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/moniepoint/jobs/5042163101",
+      "internal_job_id": 4451148101,
+      "location": {
+        "name": "Imo, Nigeria"
+      },
+      "metadata": null,
+      "id": 5042163101,
+      "updated_at": "2026-11-19T03:48:40-05:00",
+      "requisition_id": "1434",
+      "title": "Implementation Officer (Imo)",
+      "company_name": "Moniepoint",
+      "first_published": "2026-11-19T03:48:40-05:00",
+      "language": "en",
+      "application_deadline": null
+    },
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/moniepoint/jobs/5011025101",
+      "internal_job_id": 4536525101,
+      "location": {
+        "name": "Lagos, Nigeria"
+      },
+      "metadata": null,
+      "id": 5011025101,
+      "updated_at": "2026-11-19T12:46:42-05:00",
+      "requisition_id": "1612",
+      "title": "Head, IT Audit",
+      "company_name": "Moniepoint",
+      "first_published": "2026-10-20T07:35:08-04:00",
+      "language": "en",
+      "application_deadline": null
+    },
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/moniepoint/jobs/4936062101",
+      "internal_job_id": 4504282101,
+      "location": {
+        "name": "London, United Kingdom"
+      },
+      "metadata": null,
+      "id": 4936062101,
+      "updated_at": "2026-11-12T08:06:07-05:00",
+      "requisition_id": null,
+      "title": "Analytics Manager",
+      "company_name": "Moniepoint",
+      "first_published": "2026-07-23T04:55:33-04:00",
+      "language": "en",
+      "application_deadline": null
+    },
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/moniepoint/jobs/4997794101",
+      "internal_job_id": 4475269101,
+      "location": {
+        "name": "Remote, Portugal"
+      },
+      "metadata": null,
+      "id": 4997794101,
+      "updated_at": "2026-10-08T02:45:59-04:00",
+      "requisition_id": "1496",
+      "title": "Engineering Relations Partner",
+      "company_name": "Moniepoint",
+      "first_published": "2026-10-05T11:33:43-04:00",
+      "language": "en",
+      "application_deadline": null
+    },
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/moniepoint/jobs/4874410101",
+      "internal_job_id": 4475269101,
+      "location": {
+        "name": "Remote, India; Remote, Kenya; Remote, Lagos, Nigeria; Remote, Pakistan; Remote, Poland; Remote, South Africa; Remote, Spain"
+      },
+      "metadata": null,
+      "id": 4874410101,
+      "updated_at": "2026-10-08T02:46:01-04:00",
+      "requisition_id": "1496",
+      "title": "Engineering Relations Partner",
+      "company_name": "Moniepoint",
+      "first_published": "2026-05-25T05:52:00-04:00",
+      "language": "en",
+      "application_deadline": null
+    },
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/moniepoint/jobs/4355709101",
+      "internal_job_id": 4220229101,
+      "location": {
+        "name": "Remote, Nigeria"
+      },
+      "metadata": null,
+      "id": 4355709101,
+      "updated_at": "2026-08-13T10:58:40-04:00",
+      "requisition_id": "925",
+      "title": " Financial Planning Analyst",
+      "company_name": "Moniepoint",
+      "first_published": "2024-06-21T04:50:09-04:00",
+      "language": "en",
+      "application_deadline": null
+    },
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/moniepoint/jobs/4008231101",
+      "internal_job_id": 4007618101,
+      "location": {
+        "name": "FCT, Nigeria"
+      },
+      "metadata": null,
+      "id": 4008231101,
+      "updated_at": "2026-09-02T09:18:35-04:00",
+      "requisition_id": "159",
+      "title": "POS Technician (Federal Capital Territory)",
+      "company_name": "Moniepoint",
+      "first_published": "2021-11-26T02:28:07-05:00",
+      "language": "en",
+      "application_deadline": null
+    }
+  ],
+  "meta": {
+    "total": 9
+  }
+}

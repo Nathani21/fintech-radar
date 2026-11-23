@@ -5,13 +5,22 @@ from pathlib import Path
 from radar.ai import AIError
 from radar.cli import main
 
-FEED = (Path(__file__).parent / "fixtures" / "google_news_paystack.xml").read_text(encoding="utf-8")
+FIXTURES = Path(__file__).parent / "fixtures"
+FEED = (FIXTURES / "google_news_paystack.xml").read_text(encoding="utf-8")
+BOARDS = {
+    "greenhouse.io": (FIXTURES / "greenhouse_moniepoint.json").read_text(encoding="utf-8"),
+    "/kuda": (FIXTURES / "workable_kuda.json").read_text(encoding="utf-8"),
+    "/piggyvest": (FIXTURES / "workable_piggyvest.json").read_text(encoding="utf-8"),
+}
 NOW = datetime(2026, 11, 22, 11, 0, tzinfo=timezone.utc)
 SECRET = "abcd efgh ijkl mnop"
 
 
 def fake_fetch(url):
-    """Every company gets the sample feed; no network."""
+    """Job boards get their saved responses, news searches the sample feed; no network."""
+    for part, body in BOARDS.items():
+        if part in url:
+            return body
     return FEED
 
 
@@ -96,7 +105,6 @@ def test_network_failure_while_sending(tmp_path, capsys):
     code, _ = run(tmp_path, ["--send"], env=env, send=drop)
     assert code == 1
     assert "Couldn't send the email (TimeoutError)" in capsys.readouterr().err
-
 
 
 AI_REPLY = '{"one_thing": "Payouts got faster.", "picks": [{"id": 1, "why": "Regulation shapes product."}]}'
@@ -204,3 +212,71 @@ def test_max_news_zero_hides_news_and_skips_ai(tmp_path, monkeypatch):
     assert code == 0
     assert "News" not in html
     assert "No new fintech headlines" not in html
+
+
+
+def run_with_config(tmp_path, monkeypatch, change):
+    """Preview run with the real config changed by `change(config)`; returns the HTML."""
+    import radar.cli as cli
+
+    real_load_config = cli.load_config
+
+    def changed_config():
+        config = real_load_config()
+        change(config)
+        return config
+
+    monkeypatch.setattr(cli, "load_config", changed_config)
+    code = main(
+        [],
+        env={},
+        now=NOW,
+        fetch=fake_fetch,
+        preview_path=tmp_path / "preview.html",
+        env_path=tmp_path / ".env",
+    )
+    assert code == 0
+    return (tmp_path / "preview.html").read_text(encoding="utf-8")
+
+
+def test_jobs_come_first(tmp_path, monkeypatch):
+    def last_week(config):
+        config["jobs"]["max_age_days"] = 7
+
+    html = run_with_config(tmp_path, monkeypatch, last_week)
+    assert "State Inventory Officer (Lagos)" in html
+    assert "Moniepoint · Lagos, Nigeria · posted 5 days ago" in html
+    assert html.index(">Jobs<") < html.index(">News<")
+
+
+def test_no_recent_jobs_shows_the_empty_line(tmp_path, monkeypatch):
+    html = run_with_config(tmp_path, monkeypatch, lambda config: None)
+    assert "No new entry-level jobs in the last 3 days." in html
+
+
+def test_max_jobs_zero_hides_jobs(tmp_path, monkeypatch):
+    def no_jobs(config):
+        config["digest"]["max_jobs"] = 0
+
+    html = run_with_config(tmp_path, monkeypatch, no_jobs)
+    assert "Jobs" not in html
+
+
+def test_failing_job_board_is_reported_in_the_footer(tmp_path, capsys):
+    def flaky_fetch(url):
+        if "/kuda" in url:
+            raise TimeoutError("timed out")
+        return fake_fetch(url)
+
+    code = main(
+        [],
+        env={},
+        now=NOW,
+        fetch=flaky_fetch,
+        preview_path=tmp_path / "preview.html",
+        env_path=tmp_path / ".env",
+    )
+    html = (tmp_path / "preview.html").read_text(encoding="utf-8")
+    assert code == 0
+    assert "Couldn't reach today: Kuda jobs" in html
+    assert "Could not fetch Kuda jobs: timed out" in capsys.readouterr().err

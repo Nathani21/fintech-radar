@@ -3,6 +3,7 @@
 Pure logic: no network calls, no email, no secrets.
 """
 
+import re
 import tomllib
 from pathlib import Path
 
@@ -12,6 +13,16 @@ MAX_LIMIT = 10
 REGIONS = ("nigeria", "africa", "international")
 AI_DEFAULTS = {"model": "gemini-3.1-flash-lite", "max_candidates": 40}
 MAX_CANDIDATES = 100
+JOB_SOURCES = ("greenhouse", "workable")
+JOB_DEFAULTS = {
+    "max_age_days": 3,
+    "places": ["Lagos", "Abuja", "FCT", "Remote"],
+    "exclude_titles": [
+        "senior", "sr", "lead", "head", "principal", "staff", "manager",
+        "director", "vp", "vice president", "chief", "architect",
+    ],
+}
+BOARD_ID = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
 def parse_config(text):
@@ -26,6 +37,7 @@ def parse_config(text):
     check_digest(data.get("digest"))
     check_companies(data.get("companies"))
     check_ai(data.get("ai"))
+    check_jobs(data.get("jobs"))
     return data
 
 
@@ -68,6 +80,7 @@ def check_companies(companies):
         if search is not None and (not isinstance(search, str) or not search.strip()):
             raise ValueError(f"{name.strip()}: search must be non-empty text if given.")
 
+
 def check_ai(ai):
     """Check the optional [ai] section: a model ID and how many headlines the AI chooses from."""
     if ai is None:
@@ -88,7 +101,55 @@ def ai_settings(config):
     settings["model"] = settings["model"].strip()
     return settings
 
-    
+
+def check_text_list(value, name):
+    """Check a list of non-empty strings."""
+    if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+        raise ValueError(f"[jobs] {name} must be a list of non-empty text.")
+
+
+def check_jobs(jobs):
+    """Check the optional [jobs] section: boards, max_age_days, places and exclude_titles."""
+    if jobs is None:
+        return
+    if not isinstance(jobs, dict):
+        raise ValueError("[jobs] must be a section.")
+    boards = jobs.get("boards")
+    if not isinstance(boards, list) or not boards:
+        raise ValueError("[jobs] needs a boards list with at least one board.")
+    for number, board in enumerate(boards, start=1):
+        if not isinstance(board, dict):
+            raise ValueError(f"[jobs] board #{number} must be {{ company, source, id }}.")
+        company = board.get("company")
+        if not isinstance(company, str) or not company.strip():
+            raise ValueError(f"[jobs] board #{number} needs a company name.")
+        if board.get("source") not in JOB_SOURCES:
+            raise ValueError(
+                f"[jobs] {company.strip()}: source must be one of {', '.join(JOB_SOURCES)}."
+            )
+        if not isinstance(board.get("id"), str) or not BOARD_ID.match(board["id"]):
+            raise ValueError(
+                f"[jobs] {company.strip()}: id must be the board name from its URL, "
+                "lowercase letters, numbers and dashes."
+            )
+    days = jobs.get("max_age_days", JOB_DEFAULTS["max_age_days"])
+    if isinstance(days, bool) or not isinstance(days, int) or not 1 <= days <= 30:
+        raise ValueError("[jobs] max_age_days must be a whole number from 1 to 30.")
+    check_text_list(jobs.get("places", JOB_DEFAULTS["places"]), "places")
+    check_text_list(jobs.get("exclude_titles", JOB_DEFAULTS["exclude_titles"]), "exclude_titles")
+
+
+def jobs_settings(config):
+    """The [jobs] settings with defaults filled in, or None if there is no [jobs] section."""
+    if "jobs" not in config:
+        return None
+    settings = {**JOB_DEFAULTS, **config["jobs"]}
+    settings["boards"] = [
+        {**board, "company": board["company"].strip()} for board in settings["boards"]
+    ]
+    return settings
+
+
 def company_names(config, region=None):
     """Return company names in config order, optionally only those in one region."""
     return [

@@ -7,6 +7,7 @@ from radar.digest import (
     build_subject,
     failed_names,
     format_age,
+    jobs_section,
     news_section,
     safe_link,
 )
@@ -172,3 +173,22 @@ def test_hidden_section_is_not_mentioned():
     assert "News" not in html
     assert "No new fintech headlines" not in html
     assert "NEWS" not in text
+
+
+def test_jobs_section_uses_each_jobs_own_meta_line():
+    job = {
+        "title": "Data <Analyst>",
+        "link": "https://apply.workable.com/j/1",
+        "meta": "Kuda · Lagos, Nigeria · posted today",
+    }
+    subject, html, text = build_digest([jobs_section([job], 3, 3)], [], NOW)
+    assert subject.endswith("1 job")
+    assert "Data &lt;Analyst&gt;" in html
+    assert "Kuda · Lagos, Nigeria · posted today" in html
+    assert "JOBS (showing 1 of 3)" in text
+    assert "  Kuda · Lagos, Nigeria · posted today" in text
+
+
+def test_empty_jobs_section_says_how_far_back_it_looked():
+    _, html, _ = build_digest([jobs_section([], 0, 3)], [], NOW)
+    assert "No new entry-level jobs in the last 3 days." in html
