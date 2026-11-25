@@ -19,7 +19,7 @@ It runs itself on GitHub Actions every day at about noon Lagos time. There is no
 ## Features
 
 - **Jobs first:** entry-level roles in Lagos, Abuja/FCT or remote in Nigeria, first posted in the last 3 days, one per role
-- **News:** Google News for 10 Nigerian fintechs from the last 24 hours, duplicates merged, the top 5 chosen and explained by Gemini, plus a one-line "Today:" summary
+- **News:** Google News for 15 Nigerian fintechs, from big players to startups like Bamboo, Risevest and LemFi, from the last 24 hours; duplicates merged; the top 5 chosen and explained by Gemini, favouring startup and product news over government stories; plus a one-line "Today:" summary
 - **Never silently broken:** a feed or board that fails is named in the email footer and the run log; the run turns red (and GitHub emails you) only if the email itself can't be sent
 - **Gemini retries:** busy or network errors are retried after 10s and 30s
 - **Preview mode:** `python -m radar` writes `preview.html` and sends nothing

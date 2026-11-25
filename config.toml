@@ -78,3 +78,27 @@ region = "nigeria"
 name = "Carbon"
 region = "nigeria"
 search = '"Carbon" fintech Nigeria'
+
+# Startups
+[[companies]]
+name = "Bamboo"
+region = "nigeria"
+search = '"Bamboo" (fintech OR investment OR invest)'
+
+[[companies]]
+name = "Risevest"
+region = "nigeria"
+
+[[companies]]
+name = "LemFi"
+region = "nigeria"
+
+[[companies]]
+name = "Raenest"
+region = "nigeria"
+search = '"Raenest" OR "Geegpay"'
+
+[[companies]]
+name = "Trove"
+region = "nigeria"
+search = '"Trove" (fintech OR investment) Nigeria'
