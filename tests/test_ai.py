@@ -54,6 +54,13 @@ def test_build_prompt_numbers_headlines_from_zero():
     assert '{"one_thing": "...", "picks": [{"id": 3, "why": "..."}]}' in prompt
 
 
+def test_prompt_prefers_startups_and_limits_government_news():
+    prompt = build_prompt(ITEMS, 5)
+    assert "Prefer startup and product news" in prompt
+    assert "at most one government or regulation story" in prompt
+    assert "Skip government support schemes" in prompt
+
+
 def test_build_request_asks_for_json():
     body = build_request("hello")
     assert body["contents"][0]["parts"][0]["text"] == "hello"
